@@ -117,6 +117,25 @@ tr:hover td{background:#1a2540}
 
 /* Export button */
 .export-wrap{position:relative;display:inline-block}
+
+/* ── Responsive / Mobile ── */
+.hamburger{display:none;background:none;border:none;color:#94a3b8;font-size:1.35rem;cursor:pointer;padding:4px 8px;line-height:1;flex-shrink:0}
+.sidebar-overlay{display:none;position:fixed;inset:48px 0 0 0;background:rgba(0,0,0,.55);z-index:199}
+@media(max-width:768px){
+  .hamburger{display:block}
+  .body{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-105%;top:48px;width:88%;max-width:300px;height:calc(100vh - 48px);z-index:200;transition:left .25s ease;box-shadow:6px 0 24px rgba(0,0,0,.6)}
+  .sidebar.mob-open{left:0}
+  .sidebar-overlay.mob-open{display:block}
+  .topbar h1{font-size:0.82rem}
+  #ds-range{display:none}
+  .main{padding:10px}
+  .stat-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  .tabs{gap:2px}
+  .tab{padding:5px 9px;font-size:0.75rem}
+  .chart-box{padding:8px}
+  input[type=range]{min-width:40px}
+}
 .export-wrap .export-menu{display:none;position:absolute;right:0;top:100%;margin-top:3px;background:#1f2937;border:1px solid #374151;border-radius:6px;z-index:100;min-width:110px;overflow:hidden}
 .export-wrap:focus-within .export-menu,.export-wrap.open .export-menu{display:block}
 .export-menu button{display:block;width:100%;padding:7px 14px;background:none;border:none;color:#cbd5e1;font-size:0.8rem;text-align:left;cursor:pointer;white-space:nowrap}
@@ -128,6 +147,7 @@ tr:hover td{background:#1a2540}
 
 <!-- ── Top bar ── -->
 <div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="選單">☰</button>
   <h1>NDX Monte Carlo Portfolio Simulator</h1>
   <span id="ds-badge" class="badge warn">載入中…</span>
   <span id="ds-range" style="font-size:0.75rem;color:#4b5563"></span>
@@ -135,6 +155,7 @@ tr:hover td{background:#1a2540}
   <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleFile(this)">
 </div>
 
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="body">
 <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
 <div class="sidebar">
@@ -753,7 +774,17 @@ function updateWdUI() {
   document.getElementById('wd-int-row').classList.toggle('hidden', t==='pct');
 }
 
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('mob-open');
+  document.querySelector('.sidebar-overlay').classList.toggle('mob-open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('mob-open');
+  document.querySelector('.sidebar-overlay').classList.remove('mob-open');
+}
+
 function switchTab(id, el) {
+  closeSidebar();
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
   document.querySelectorAll('.tab-body').forEach(t=>t.classList.remove('act'));
   el.classList.add('act');
@@ -1555,6 +1586,7 @@ let lastResult = null;
 
 async function doRun() {
   if (!D) return;
+  closeSidebar();
   const p = getParams();
   const sum = p.alloc.reduce((a,b)=>a+b,0);
   if (Math.abs(sum-1) > 0.01) { alert('配置合計必須為 100%'); return; }
