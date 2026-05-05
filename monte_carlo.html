@@ -2484,19 +2484,21 @@ function renderDataTab() {
   const nYrs = (new Date(dates[N-1]) - new Date(dates[0])) / (365.25*86400*1000);
 
   // Annual grouping — returns, RF, last close
-  const ann = {}, annRF = {}, annClose = {};
+  const ann = {}, annRF = {}, annRFDays = {}, annClose = {};
   for (let i = 0; i < N; i++) {
     const yr = dates[i].slice(0,4);
     if (!ann[yr]) ann[yr] = 1;
     ann[yr] *= (1 + ndxR[i]);
-    if (!annRF[yr]) annRF[yr] = 0;
+    if (!annRF[yr]) { annRF[yr] = 0; annRFDays[yr] = 0; }
     annRF[yr] += rfD[i] * 100;
+    annRFDays[yr] += 1;
     annClose[yr] = ndxCl[i]; // overwrite → last trading day of year
   }
 
   const yrList = Object.keys(ann).sort();
   const yrNDX   = yrList.map(y => (ann[y] - 1) * 100);
-  const yrRF    = yrList.map(y => annRF[y]);
+  // annualize: (mean daily RF) × 252, correct for both full and partial years
+  const yrRF    = yrList.map(y => annRFDays[y] > 0 ? annRF[y] / annRFDays[y] * 252 : 0);
   const yrClose = yrList.map(y => annClose[y]);
 
   // Stat cards
