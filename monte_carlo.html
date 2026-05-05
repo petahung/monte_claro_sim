@@ -881,6 +881,43 @@ function buildParamSummary() {
   return wrap;
 }
 
+// Re-render a Chart.js canvas at `scale`× pixel density and return a dataURL.
+// Falls back to plain toDataURL for non-Chart canvases.
+async function hiResChartDataURL(canvas, scale = 3) {
+  const chart = Chart.getChart(canvas);
+  if (!chart) return canvas.toDataURL('image/png');
+
+  const w = canvas.offsetWidth  || canvas.width  || 600;
+  const h = canvas.offsetHeight || canvas.height || 300;
+
+  const tmp = document.createElement('canvas');
+  tmp.style.cssText = `width:${w}px;height:${h}px;position:fixed;left:-9999px;top:0`;
+  tmp.width  = w * scale;
+  tmp.height = h * scale;
+  document.body.appendChild(tmp);
+
+  const tmpChart = new Chart(tmp, {
+    type:    chart.config.type,
+    data:    chart.config.data,
+    options: { ...chart.config.options, animation: false, devicePixelRatio: scale },
+  });
+
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const url = tmp.toDataURL('image/png');
+  tmpChart.destroy();
+  document.body.removeChild(tmp);
+  return url;
+}
+
+async function hiResImg(id, style) {
+  const c = document.getElementById(id);
+  if (!c) return null;
+  const img = document.createElement('img');
+  img.src = await hiResChartDataURL(c, 3);
+  img.style.cssText = style || 'width:100%;display:block';
+  return img;
+}
+
 async function buildPrintCanvas(tabId) {
   const PAGE_W = 794; // A4 portrait CSS px at 96dpi
   const BG = '#0a0d14';
@@ -908,12 +945,12 @@ async function buildPrintCanvas(tabId) {
       wrap.appendChild(clone);
     }
     // Fan chart (full width)
-    const fanBox = chartBox('資產路徑分位帶', canvasImg('fan-chart'));
+    const fanBox = chartBox('資產路徑分位帶', await hiResImg('fan-chart'));
     if (fanBox) wrap.appendChild(fanBox);
 
     // Hist + DD side by side
-    const histImg = canvasImg('hist-chart', 'width:100%;display:block');
-    const ddImg   = canvasImg('dd-chart',   'width:100%;display:block');
+    const histImg = await hiResImg('hist-chart', 'width:100%;display:block');
+    const ddImg   = await hiResImg('dd-chart',   'width:100%;display:block');
     if (histImg && ddImg) {
       const row = document.createElement('div');
       row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px';
@@ -922,7 +959,7 @@ async function buildPrintCanvas(tabId) {
       wrap.appendChild(row);
     }
     // Beta chart
-    const betaBox = chartBox('Beta 時間變化', canvasImg('beta-chart'));
+    const betaBox = chartBox('Beta 時間變化', await hiResImg('beta-chart'));
     if (betaBox) wrap.appendChild(betaBox);
 
     // Detail stats table
@@ -941,12 +978,29 @@ async function buildPrintCanvas(tabId) {
     }
 
   } else if (tabId === 'cmp') {
-    document.querySelectorAll('#comp-results canvas').forEach(c => {
+    // Fan chart — full width, high-res
+    const fanC = document.getElementById('cmp-fan');
+    if (fanC) {
       const img = document.createElement('img');
-      img.src = c.toDataURL('image/png');
+      img.src = await hiResChartDataURL(fanC, 3);
       img.style.cssText = 'width:100%;display:block;margin-bottom:6px;border-radius:6px;border:1px solid #1f2937';
       wrap.appendChild(img);
-    });
+    }
+    // Box plots — keep side-by-side layout, each rendered at high res
+    const boxCagr = document.getElementById('cmp-box-cagr');
+    const boxMdd  = document.getElementById('cmp-box-mdd');
+    if (boxCagr || boxMdd) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px';
+      for (const c of [boxCagr, boxMdd].filter(Boolean)) {
+        const img = document.createElement('img');
+        img.src = await hiResChartDataURL(c, 3);
+        img.style.cssText = 'width:100%;display:block;border-radius:6px;border:1px solid #1f2937';
+        row.appendChild(img);
+      }
+      wrap.appendChild(row);
+    }
+    // Comparison table
     const tbl = document.querySelector('#comp-results table');
     if (tbl) {
       const clone = tbl.cloneNode(true);
@@ -962,10 +1016,10 @@ async function buildPrintCanvas(tabId) {
       clone.style.marginBottom = '8px';
       wrap.appendChild(clone);
     }
-    [['ann-chart','NDX 年度報酬率'],['rf-chart','無風險利率'],['m2-chart','USD M2'],['kelly-chart','Kelly Fraction']].forEach(([id, title]) => {
-      const box = chartBox(title, canvasImg(id));
+    for (const [id, title] of [['ann-chart','NDX 年度報酬率'],['rf-chart','無風險利率'],['m2-chart','USD M2'],['kelly-chart','Kelly Fraction']]) {
+      const box = chartBox(title, await hiResImg(id));
       if (box) wrap.appendChild(box);
-    });
+    }
   }
 
   document.body.appendChild(wrap);
@@ -1542,6 +1596,7 @@ function renderResults(res) {
   // Derived arrays
   const cagrArr = Float64Array.from(finalV, v =>
     v > 0 ? (Math.pow(v/init, 1/years)-1)*100 : -100);
+  const mwrrArr    = computeMWRR(finalV, p);
   const mulArr     = Float64Array.from(finalV, v => v/init);
   const volPctArr  = Float64Array.from(volArr,     v => v*100);
   const meanRetPct = Float64Array.from(meanRetArr,  v => v*100);
@@ -1550,6 +1605,7 @@ function renderResults(res) {
   const stats = [
     { l:'存活率',       v: fp(survRate*100,1), s:`${res.surv.reduce((a,b)=>a+b,0)} / ${p.numSims}` },
     { l:'CAGR 中位',    v: fp(pct(cagrArr,50)), s:`P10: ${fp(pct(cagrArr,10))}  P90: ${fp(pct(cagrArr,90))}` },
+    { l:'MWRR 中位',    v: fp(pct(mwrrArr,50)), s:`P10: ${fp(pct(mwrrArr,10))}  P90: ${fp(pct(mwrrArr,90))}` },
     { l:'算術平均報酬', v: fp(pct(meanRetPct,50)), s:`P10: ${fp(pct(meanRetPct,10))}  P90: ${fp(pct(meanRetPct,90))}` },
     { l:'年化波動率',   v: fp(pct(volPctArr,50)), s:`P10: ${fp(pct(volPctArr,10))}  P90: ${fp(pct(volPctArr,90))}` },
     { l:'Sharpe Ratio', v: f2(pct(sharpArr,50),2), s:`P10: ${f2(pct(sharpArr,10),2)}  P90: ${f2(pct(sharpArr,90),2)}` },
@@ -1568,6 +1624,7 @@ function renderResults(res) {
   const PS = [5,10,25,50,75,90,95];
   const metrics = [
     { n:'CAGR（%）',         arr: cagrArr,                         fmt: v=>fp(v) },
+    { n:'MWRR（%）',         arr: mwrrArr,                         fmt: v=>fp(v) },
     { n:'算術平均報酬（%）', arr: meanRetPct,                      fmt: v=>fp(v) },
     { n:'年化波動率（%）',   arr: volPctArr,                       fmt: v=>fp(v) },
     { n:'Sharpe Ratio',      arr: sharpArr,                        fmt: v=>f2(v,2) },
@@ -1688,7 +1745,9 @@ function computeHistPaths(p, useGrossAsset, T, K) {
     }
 
     const yr = dates?.[si]?.substring(0,4) ?? String(Math.round(si/252));
-    result.push({ label: yr, values });
+    const startDate = dates?.[si] ?? '';
+    const endDate   = dates?.[Math.min(si + days - 1, N - 1)] ?? '';
+    result.push({ label: yr, startDate, endDate, values });
   }
   return result;
 }
@@ -1795,10 +1854,12 @@ function drawFan(res) {
   if (document.getElementById('show-hist-paths')?.checked) {
     const histPaths = computeHistPaths(p, useGrossAsset, T, K);
     const n = histPaths.length;
-    histPaths.forEach(({ label, values }, i) => {
+    histPaths.forEach(({ label, startDate, endDate, values }, i) => {
       const alpha = 0.15 + 0.45 * (i / Math.max(n-1, 1)); // older=faint, recent=brighter
       datasets.unshift({  // insert behind fan bands
         label: 'hist-' + label,
+        histStartDate: startDate,
+        histEndDate: endDate,
         data: Array.from(values, (v,t) => ({ x: t*K/252, y: v||null })),
         borderColor: `rgba(251,191,36,${alpha.toFixed(2)})`,
         borderWidth: 1,
@@ -1839,7 +1900,11 @@ function drawFan(res) {
           if (lbl==='總投入')     return `總投入: ${fmt(c.raw)}`;
           if (lbl==='累積取款 P50') return `累積取款 P50: ${fmt(c.raw)}`;
           if (lbl==='累積債務 P50') return `累積債務 P50: ${fmt(c.raw)}`;
-          const pIdx = PS.indexOf(+lbl.replace('P',''));
+          if (lbl.startsWith('hist-')) {
+            const val = typeof c.raw==='object' ? c.raw.y : c.raw;
+            const s = c.dataset.histStartDate, e = c.dataset.histEndDate;
+            return `歷史路徑 ${s}～${e}: ${fmt(val)}`;
+          }
           return `${lbl}: ${fmt(typeof c.raw==='object'?c.raw.y:c.raw)}`;
         }}}
       }
@@ -1989,6 +2054,7 @@ function addComp() {
     cmpTab.classList.add('tab-added');
     cmpTab.addEventListener('animationend', () => cmpTab.classList.remove('tab-added'), { once: true });
   }
+  document.querySelector('.main')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderCompTags() {
@@ -2031,6 +2097,13 @@ async function doCompRun() {
 }
 
 function renderCompTable(all) {
+  // Cache MWRR per result object so computeMWRR runs once per scenario
+  const _mwrrCache = new Map();
+  const mwrrOf2 = (r, p) => {
+    if (!_mwrrCache.has(r)) _mwrrCache.set(r, computeMWRR(r.finalV, p));
+    return _mwrrCache.get(r);
+  };
+
   const METRICS = [
     { n:'配置',            fn:(r,p)=>allocLabel(p) },
     { n:'年數',            fn:(r,p)=>p.years+'年' },
@@ -2039,6 +2112,9 @@ function renderCompTable(all) {
     { n:'CAGR P10',        fn:(r,p)=>{ const c=cagrOf(r.finalV,p); return fp(pct(c,10)); } },
     { n:'CAGR 中位',       fn:(r,p)=>{ const c=cagrOf(r.finalV,p); return fp(pct(c,50)); } },
     { n:'CAGR P90',        fn:(r,p)=>{ const c=cagrOf(r.finalV,p); return fp(pct(c,90)); } },
+    { n:'MWRR P10',        fn:(r,p)=>fp(pct(mwrrOf2(r,p),10)) },
+    { n:'MWRR 中位',       fn:(r,p)=>fp(pct(mwrrOf2(r,p),50)) },
+    { n:'MWRR P90',        fn:(r,p)=>fp(pct(mwrrOf2(r,p),90)) },
     { n:'算術均報酬 中位', fn:r=>fp(pct(Float64Array.from(r.meanRetArr,v=>v*100),50)) },
     { n:'年化波動率 中位', fn:r=>fp(pct(Float64Array.from(r.volArr,v=>v*100),50)) },
     { n:'Sharpe P10',      fn:r=>f2(pct(r.sharpArr,10),2) },
@@ -2074,6 +2150,57 @@ function renderCompTable(all) {
 
 function cagrOf(finalV, p) {
   return Float64Array.from(finalV, v=> v>0?(Math.pow(v/p.initVal,1/p.years)-1)*100:-100);
+}
+
+// Money-Weighted Rate of Return (IRR of all cash flows)
+// Cash-flow convention: contributions negative, terminal value positive.
+// Accounts for DCA timing; withdrawals reduce finalV (already reflected in net assets).
+function computeMWRR(finalV, p) {
+  const { years, initVal, dca } = p;
+  const numSims = finalV.length;
+  const result = new Float64Array(numSims);
+
+  if (!dca.en || dca.amt <= 0) {
+    // No DCA → MWRR collapses to CAGR
+    for (let s = 0; s < numSims; s++)
+      result[s] = finalV[s] > 0 ? (Math.pow(finalV[s] / initVal, 1 / years) - 1) * 100 : -100;
+    return result;
+  }
+
+  const days = years * 252;
+  // Build DCA time-points (in years) for each contribution
+  const dcaTimes = [];
+  for (let d = dca.int; d <= days; d += dca.int) dcaTimes.push(d / 252);
+  const nDca = dcaTimes.length;
+
+  for (let s = 0; s < numSims; s++) {
+    const fv = finalV[s];
+    if (fv <= 0) { result[s] = -100; continue; }
+
+    // Initial guess: CAGR on total invested
+    let r = Math.pow(fv / (initVal + nDca * dca.amt), 1 / years) - 1;
+    if (!isFinite(r)) r = 0;
+
+    // Newton-Raphson (≤30 iterations)
+    for (let iter = 0; iter < 30; iter++) {
+      const rp1 = 1 + r;
+      if (rp1 <= 0) { r = -0.9999; break; }
+      let npv  = -initVal + fv * Math.pow(rp1, -years);
+      let dnpv = -fv * years * Math.pow(rp1, -years - 1);
+      for (let k = 0; k < nDca; k++) {
+        const t = dcaTimes[k];
+        const d = Math.pow(rp1, -t);
+        npv  -= dca.amt * d;
+        dnpv += dca.amt * t * d / rp1;
+      }
+      if (Math.abs(npv) < initVal * 1e-7 || Math.abs(dnpv) < 1e-14) break;
+      r -= npv / dnpv;
+      if (r < -0.9999) { r = -0.9999; break; }
+      if (r > 100) { r = 100; break; }
+    }
+    result[s] = r * 100;
+  }
+  return result;
 }
 
 function drawCompFan(all) {
@@ -2200,9 +2327,14 @@ function drawCompBoxPlots(all) {
     };
   }
 
+  // Precompute both CAGR and MWRR box data for the left chart toggle
+  const cagrBoxData = all.map(({res, p}) => makeBoxData(cagrOf(res.finalV, p)));
+  const mwrrBoxData = all.map(({res, p}) => makeBoxData(computeMWRR(res.finalV, p)));
+  window._cmpBoxLeftData = { cagrBoxData, mwrrBoxData, labels, COLORS };
+
   const cagrDatasets = [{
     label: 'CAGR',
-    data: all.map(({res, p}) => makeBoxData(cagrOf(res.finalV, p))),
+    data: cagrBoxData,
     backgroundColor: all.map((_, i) => COLORS[i % COLORS.length] + '0.35)'),
     borderColor:     all.map((_, i) => COLORS[i % COLORS.length] + '0.9)'),
     borderWidth: 1.5,
@@ -2252,10 +2384,11 @@ function drawCompBoxPlots(all) {
   const elRow = document.createElement('div');
   elRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px';
   elRow.innerHTML =
-    '<div class="chart-box" style="margin-bottom:0"><div class="chart-title" style="margin-bottom:8px">CAGR 分佈對比（P5 / P25 / P50 / P75 / P95）</div><canvas id="cmp-box-cagr" height="260"></canvas></div>' +
+    '<div class="chart-box" style="margin-bottom:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="chart-title" style="margin:0">報酬分佈對比（P5–P95）</span><select id="cmp-box-left-metric" style="font-size:0.75rem" onchange="redrawCompBoxLeft()"><option value="cagr">CAGR</option><option value="mwrr">MWRR</option></select></div><canvas id="cmp-box-cagr" height="260"></canvas></div>' +
     '<div class="chart-box" style="margin-bottom:0"><div class="chart-title" style="margin-bottom:8px">MDD 分佈對比（P5 / P25 / P50 / P75 / P95）</div><canvas id="cmp-box-mdd" height="260"></canvas></div>';
   document.getElementById('comp-results').appendChild(elRow);
 
+  window._cmpBoxOpts = boxOpts;
   setTimeout(() => {
     if (CHARTS.cmpBoxCagr) CHARTS.cmpBoxCagr.destroy();
     CHARTS.cmpBoxCagr = new Chart(document.getElementById('cmp-box-cagr'), {
@@ -2271,6 +2404,27 @@ function drawCompBoxPlots(all) {
       options: boxOpts('%', '%', null)
     });
   }, 80);
+}
+
+function redrawCompBoxLeft() {
+  const d = window._cmpBoxLeftData;
+  if (!d || !document.getElementById('cmp-box-cagr')) return;
+  const metric = document.getElementById('cmp-box-left-metric')?.value ?? 'cagr';
+  const boxData = metric === 'mwrr' ? d.mwrrBoxData : d.cagrBoxData;
+  const label   = metric === 'mwrr' ? 'MWRR' : 'CAGR';
+  const datasets = [{
+    label,
+    data: boxData,
+    backgroundColor: d.labels.map((_, i) => d.COLORS[i % d.COLORS.length] + '0.35)'),
+    borderColor:     d.labels.map((_, i) => d.COLORS[i % d.COLORS.length] + '0.9)'),
+    borderWidth: 1.5, itemRadius: 0, outlierRadius: 0, medianColor: '#f8fafc',
+  }];
+  if (CHARTS.cmpBoxCagr) CHARTS.cmpBoxCagr.destroy();
+  CHARTS.cmpBoxCagr = new Chart(document.getElementById('cmp-box-cagr'), {
+    type: 'boxplot',
+    data: { labels: d.labels, datasets },
+    options: window._cmpBoxOpts('%', '%', null),
+  });
 }
 
 // ╔══════════════════════════════════════════════════════════════╗
