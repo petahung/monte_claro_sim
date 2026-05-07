@@ -965,8 +965,8 @@ async function buildPrintCanvas(tabId) {
   hdr.innerHTML = `<span style="font-size:13px;font-weight:700;color:#60a5fa">NDX Monte Carlo — ${tabNames[tabId]||tabId}</span><span style="font-size:9px;color:#4b5563">${new Date().toLocaleDateString('zh-TW')}</span>`;
   wrap.appendChild(hdr);
 
-  // Param summary (not shown for comparison tab)
-  if (tabId !== 'cmp') wrap.appendChild(buildParamSummary());
+  // Param summary (not shown for comparison or historical data tab)
+  if (tabId !== 'cmp' && tabId !== 'dat') wrap.appendChild(buildParamSummary());
 
   if (tabId === 'res') {
     // Stats grid clone
