@@ -514,9 +514,11 @@ tr:hover td{background:#1a2540}
   </div>
 
   <div class="footer">
-    <div>本工具由人工智慧（Claude, Anthropic）協作開發，模擬結果僅供學術研究與教育用途，不構成任何投資建議。</div>
-    <div>Historical data simulation · Past performance does not guarantee future results.</div>
-    <div style="margin-top:6px">© 2026 Peta Hung · NDX Monte Carlo Simulator · All rights reserved.</div>
+    <div style="color:#6b7280;font-weight:600;margin-bottom:2px">⚠ 風險聲明 · Risk Disclaimer</div>
+    <div>本工具僅供學術研究與教育用途，不構成任何投資建議、要約或招攬。模擬結果基於歷史資料，不代表未來表現。</div>
+    <div>槓桿投資涉及高度風險，可能導致損失超過本金，投資前請諮詢合格的財務顧問。</div>
+    <div>For educational and research purposes only. Not investment advice. Leveraged instruments involve substantial risk and may result in losses exceeding initial capital. Past performance does not guarantee future results.</div>
+    <div style="margin-top:6px;color:#4b5563">© 2026 Peta Hung · NDX Monte Carlo Simulator · All rights reserved · 本工具由 Claude (Anthropic) 協作開發</div>
   </div>
 
 </div><!-- /main -->
@@ -1047,11 +1049,21 @@ async function buildPrintCanvas(tabId) {
       clone.style.marginBottom = '8px';
       wrap.appendChild(clone);
     }
-    for (const [id, title] of [['ann-chart','NDX 年度報酬率'],['rf-chart','無風險利率'],['m2-chart','USD M2'],['kelly-chart','Kelly Fraction']]) {
+    for (const [id, title] of [['ann-chart','NDX 年度報酬率'],['m2-chart','USD M2'],['rf-chart','無風險利率'],['kelly-chart','Kelly Fraction']]) {
       const box = chartBox(title, await hiResImg(id));
       if (box) wrap.appendChild(box);
     }
   }
+
+  // Report footer — license / copyright / disclaimer
+  const rptFooter = document.createElement('div');
+  rptFooter.style.cssText = 'margin-top:14px;padding-top:8px;border-top:1px solid #1f2937;font-size:7.5px;color:#374151;line-height:1.7;text-align:center';
+  rptFooter.innerHTML = `
+    <div style="color:#4b5563;font-weight:600;margin-bottom:2px">⚠ 風險聲明 · Risk Disclaimer</div>
+    <div>本報告由 NDX Monte Carlo Simulator 自動產生，僅供學術研究與教育用途，不構成任何投資建議或要約。槓桿投資涉及高度風險，可能導致損失超過本金。</div>
+    <div>This report is for educational and research purposes only and does not constitute investment advice. Leveraged instruments involve substantial risk and may result in losses exceeding initial capital. Past performance does not guarantee future results.</div>
+    <div style="margin-top:4px">© 2026 Peta Hung · NDX Monte Carlo Simulator · All rights reserved · 本工具由 Claude (Anthropic) 協作開發</div>`;
+  wrap.appendChild(rptFooter);
 
   document.body.appendChild(wrap);
   const canvas = await html2canvas(wrap, {
