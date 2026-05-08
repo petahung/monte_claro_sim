@@ -110,6 +110,11 @@ tr:hover td{background:#1a2540}
 .footer{margin-top:32px;padding:16px 0 8px;border-top:1px solid #1f2937;text-align:center;font-size:0.72rem;color:#374151;line-height:1.8}
 .footer a{color:#4b5563;text-decoration:none}
 .footer a:hover{color:#94a3b8}
+.btn-ai{background:linear-gradient(135deg,#1e3a5f,#1e4d8c);border:1px solid #3b82f6;border-radius:5px;color:#93c5fd;font-size:0.78rem;padding:4px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-ai:hover{background:linear-gradient(135deg,#1e4d8c,#2563eb);color:#fff}
+.btn-ai:disabled{opacity:.5;cursor:default}
+.ai-box{background:#0d1829;border:1px solid #1e3a5f;border-radius:8px;padding:14px 16px;margin:6px 0 10px;font-size:0.82rem;line-height:1.8;color:#cbd5e1;white-space:pre-wrap;display:none}
+.ai-box.show{display:block}
 .total-ok{color:#4ade80}
 .total-err{color:#f87171}
 @keyframes tab-pulse{0%,100%{background:#1e3356;color:#93c5fd;border-color:#3b82f6}50%{background:#2563eb;color:#fff;border-color:#60a5fa}}
@@ -396,7 +401,9 @@ tr:hover td{background:#1a2540}
             <button onclick="exportReport('res','pdf')">儲存為 PDF</button>
           </div>
         </div>
+        <button class="btn-ai" id="ai-btn-res" onclick="askAI('res')">✦ AI 解說</button>
       </div>
+      <div class="ai-box" id="ai-box-res"></div>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="chart-box">
         <div class="chart-header" style="position:relative">
@@ -464,6 +471,7 @@ tr:hover td{background:#1a2540}
             <button onclick="exportReport('cmp','pdf')">儲存為 PDF</button>
           </div>
         </div>
+        <button class="btn-ai" id="ai-btn-cmp" onclick="askAI('cmp')">✦ AI 解說</button>
         <button class="btn-sm btn-danger" onclick="clearComps()">清除全部</button>
       </div>
     </div>
@@ -472,6 +480,7 @@ tr:hover td{background:#1a2540}
       <button class="btn btn-primary" id="comp-run-btn" onclick="doCompRun()">▶ 執行所有比較</button>
     </div>
     <div id="comp-results"></div>
+    <div class="ai-box" id="ai-box-cmp"></div>
     </div><!-- /cmp-filled -->
   </div>
 
@@ -479,7 +488,8 @@ tr:hover td{background:#1a2540}
   <div class="tab-body" id="tab-dat">
     <div id="dat-empty" style="text-align:center;padding:60px;color:#374151">請先載入 ndx_leveraged.csv</div>
     <div id="dat-content" class="hidden">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn-ai" id="ai-btn-dat" onclick="askAI('dat')">✦ AI 解說</button>
         <div class="export-wrap" id="exp-dat-wrap">
           <button class="btn-sm" onclick="toggleExportMenu('exp-dat-wrap')">⬇ 匯出報告 ▾</button>
           <div class="export-menu">
@@ -488,6 +498,7 @@ tr:hover td{background:#1a2540}
           </div>
         </div>
       </div>
+      <div class="ai-box" id="ai-box-dat"></div>
       <div class="stat-grid" id="dat-stats"></div>
       <div class="chart-box">
         <div class="chart-title" style="margin-bottom:8px">NDX 年度報酬率 ＆ 指數點位</div>
@@ -2700,6 +2711,134 @@ function drawKellyChart() {
       },
     },
   });
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+//   AI EXPLANATION
+// ╚══════════════════════════════════════════════════════════════╝
+const WORKER_URL = 'https://dawn-sea-09b0.cyhung.workers.dev';
+
+async function askAI(tabId) {
+  const btn = document.getElementById(`ai-btn-${tabId}`);
+  const box = document.getElementById(`ai-box-${tabId}`);
+  if (!btn || !box) return;
+  btn.disabled = true;
+  btn.textContent = '分析中…';
+  box.classList.remove('show');
+  box.textContent = '';
+
+  let prompt = '';
+
+  if (tabId === 'dat' && D) {
+    const { N, dates, ndxR, rfD } = D;
+    const nYrs = (new Date(dates[N-1]) - new Date(dates[0])) / (365.25*86400*1000);
+    const meanDailyR = Array.from(ndxR).reduce((a,v)=>a+v,0)/N;
+    const cagr = (Math.pow(Array.from(ndxR).reduce((a,v)=>a*(1+v),1), 1/nYrs)-1)*100;
+    const varR = Array.from(ndxR).reduce((s,v)=>s+(v-meanDailyR)**2,0)/N;
+    const volA = Math.sqrt(varR*252)*100;
+    const rfLast = rfD[N-1]*252*100;
+    const latestYear = parseInt(dates[N-1].slice(0,4));
+    const m2Yoy = M2[latestYear] && M2[latestYear-1]
+      ? ((M2[latestYear]-M2[latestYear-1])/M2[latestYear-1]*100).toFixed(1)
+      : 'N/A';
+    const W = Math.min(20*252, N);
+    const slice = Array.from(ndxR).slice(N-W);
+    const mu = slice.reduce((a,v)=>a+v,0)/slice.length;
+    const vk = slice.reduce((s,v)=>s+(v-mu)**2,0)/slice.length;
+    const kelly = vk > 1e-12 ? Math.min(8, Math.max(-2, mu/vk)).toFixed(2) : 'N/A';
+
+    prompt = `You are a professional investment educator. Based on the following Nasdaq-100 (NDX) historical data, provide educational explanations in Traditional Chinese (繁體中文) with English subtitles for key terms. Be engaging and accessible to general investors.
+
+【NDX Historical Statistics】
+- Data period: ${dates[0].slice(0,7)} to ${dates[N-1].slice(0,7)} (${nYrs.toFixed(1)} years)
+- CAGR: ${cagr.toFixed(2)}%
+- Annualised Volatility: ${volA.toFixed(2)}%
+- Current Risk-Free Rate (annualised): ${rfLast.toFixed(2)}%
+- Latest M2 YoY Growth: ${m2Yoy}%
+- Kelly Fraction (20-year rolling): ${kelly}×
+
+Please answer the following three questions. Each ~120–150 words. Format as numbered bold headings. Do NOT add disclaimers.
+
+1. **為何應該投資 NDX？(Why invest in NDX?)**
+2. **怎樣挑選好的標的？(How to select good investments?)**
+3. **怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?)**`;
+
+  } else if (tabId === 'res' && lastResult) {
+    const { finalV, mddArr, volArr, sharpArr, survRate, years, p } = lastResult;
+    const init = p.initVal;
+    const cagrArr = Float64Array.from(finalV, v => v>0 ? (Math.pow(v/init,1/years)-1)*100 : -100);
+    const mulArr  = Float64Array.from(finalV, v => v/init);
+    const volPct  = Float64Array.from(volArr, v => v*100);
+
+    prompt = `You are a professional investment educator. Interpret the following Monte Carlo simulation results for a Nasdaq-100 portfolio in Traditional Chinese (繁體中文) with English subtitles for key terms.
+
+【Simulation Parameters】
+- Portfolio: ${allocLabel(p)}
+- Years: ${years} | Simulations: ${p.numSims.toLocaleString()} | Rebalancing: ${rebalLabel(p)}
+- Initial capital: ${p.initVal.toLocaleString()}
+
+【Results】
+- Survival rate: ${(survRate*100).toFixed(1)}%
+- CAGR — P10: ${pct(cagrArr,10).toFixed(2)}%  Median: ${pct(cagrArr,50).toFixed(2)}%  P90: ${pct(cagrArr,90).toFixed(2)}%
+- Annualised volatility median: ${pct(volPct,50).toFixed(2)}%
+- Sharpe Ratio median: ${pct(sharpArr,50).toFixed(2)}
+- Max Drawdown — Median: ${(-pct(mddArr,50)*100).toFixed(1)}%  P90: ${(-pct(mddArr,90)*100).toFixed(1)}%
+- Terminal multiple median: ${pct(mulArr,50).toFixed(1)}×
+
+Please provide three sections, each ~120 words, with bold headings. Do NOT add disclaimers.
+
+1. **結果解讀 (Result Interpretation)**: What do these numbers mean? Is this a good outcome?
+2. **主要風險 (Key Risks)**: What are the key risks based on MDD and survival rate?
+3. **建議與下一步 (Suggestions)**: How might the investor adjust allocation or strategy?`;
+
+  } else if (tabId === 'cmp') {
+    const tbl = document.querySelector('#comp-results table');
+    if (!tbl) {
+      box.textContent = '請先執行比較分析。\nPlease run the comparison first.';
+      box.classList.add('show');
+      btn.disabled = false; btn.textContent = '✦ AI 解說';
+      return;
+    }
+    const rows = Array.from(tbl.querySelectorAll('tr'))
+      .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td=>td.textContent.trim()).join(' | '))
+      .join('\n');
+
+    prompt = `You are a professional investment educator. Compare the following Monte Carlo simulation results in Traditional Chinese (繁體中文) with English subtitles for key terms.
+
+【Comparison Table】
+${rows}
+
+Please provide three sections, each ~120–150 words, with bold headings. Do NOT add disclaimers.
+
+1. **各組合優劣比較 (Portfolio Comparison)**: Compare survival rate, CAGR, MDD across configurations.
+2. **最佳配置建議 (Recommended Configuration)**: Which configuration best balances return and risk? Why?
+3. **適合不同投資人的選擇 (For Different Investor Profiles)**: Match each configuration to an investor risk profile.`;
+  }
+
+  if (!prompt) {
+    box.textContent = '請先載入資料或執行模擬。\nPlease load data or run a simulation first.';
+    box.classList.add('show');
+    btn.disabled = false; btn.textContent = '✦ AI 解說';
+    return;
+  }
+
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { text } = await res.json();
+    box.textContent = text;
+    box.classList.add('show');
+  } catch(e) {
+    box.textContent = '解說載入失敗，請稍後再試。\nFailed to load explanation, please try again.';
+    box.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✦ AI 解說';
+  }
 }
 
 // ╔══════════════════════════════════════════════════════════════╗
