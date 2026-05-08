@@ -2747,14 +2747,14 @@ async function askAI(tabId) {
     const vk = slice.reduce((s,v)=>s+(v-mu)**2,0)/slice.length;
     const kelly = vk > 1e-12 ? Math.min(8, Math.max(-2, mu/vk)).toFixed(2) : 'N/A';
 
-    prompt = `根據以下 NDX 歷史數據，用繁體中文回答三個問題，每題約100字，關鍵術語附英文。
-規則：不要任何前言或自我介紹，直接從「### 1.」開始輸出，不加免責聲明。
+    prompt = `根據以下 NDX 歷史數據，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+格式：每章節用「### 章節標題」開頭，不要任何前言、自我介紹或免責聲明，直接開始第一章節。
 
 數據：期間 ${dates[0].slice(0,7)}～${dates[N-1].slice(0,7)}（${nYrs.toFixed(1)}年）｜CAGR ${cagr.toFixed(1)}%｜年化波動 ${volA.toFixed(1)}%｜無風險利率 ${rfLast.toFixed(1)}%｜M2年增率 ${m2Yoy}%｜Kelly ${kelly}×
 
-### 1. 為何應該投資 NDX？(Why invest in NDX?)
-### 2. 怎樣挑選好的標的？(How to select good investments?)
-### 3. 怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?)`;
+章節一：為何應該投資 NDX？(Why invest in NDX?)
+章節二：怎樣挑選好的標的？(How to select good investments?)
+章節三：怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?)`;
 
   } else if (tabId === 'res' && lastResult) {
     const { finalV, mddArr, volArr, sharpArr, survRate, years, p } = lastResult;
@@ -2763,15 +2763,15 @@ async function askAI(tabId) {
     const mulArr  = Float64Array.from(finalV, v => v/init);
     const volPct  = Float64Array.from(volArr, v => v*100);
 
-    prompt = `根據以下蒙地卡羅模擬結果，用繁體中文回答三個問題，每題約100字，關鍵術語附英文。
-規則：不要任何前言或自我介紹，直接從「### 1.」開始輸出，不加免責聲明。
+    prompt = `根據以下蒙地卡羅模擬結果，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+格式：每章節用「### 章節標題」開頭，不要任何前言、自我介紹或免責聲明，直接開始第一章節。
 
 配置：${allocLabel(p)}｜${years}年｜${p.numSims.toLocaleString()}次｜${rebalLabel(p)}｜初始資金 ${p.initVal.toLocaleString()}
 存活率：${(survRate*100).toFixed(1)}%｜CAGR 中位 ${pct(cagrArr,50).toFixed(1)}%（P10 ${pct(cagrArr,10).toFixed(1)}% / P90 ${pct(cagrArr,90).toFixed(1)}%）｜波動率 ${pct(volPct,50).toFixed(1)}%｜Sharpe ${pct(sharpArr,50).toFixed(2)}｜MDD 中位 ${(-pct(mddArr,50)*100).toFixed(1)}%（P90 ${(-pct(mddArr,90)*100).toFixed(1)}%）｜期末倍數中位 ${pct(mulArr,50).toFixed(1)}×
 
-### 1. 結果解讀 (Result Interpretation)
-### 2. 主要風險 (Key Risks)
-### 3. 建議與下一步 (Suggestions)`;
+章節一：結果解讀 (Result Interpretation)
+章節二：主要風險 (Key Risks)
+章節三：建議與下一步 (Suggestions)`;
 
   } else if (tabId === 'cmp') {
     const tbl = document.querySelector('#comp-results table');
@@ -2785,14 +2785,14 @@ async function askAI(tabId) {
       .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td=>td.textContent.trim()).join(' | '))
       .join('\n');
 
-    prompt = `根據以下投資組合比較數據，用繁體中文回答三個問題，每題約100字，關鍵術語附英文。
-規則：不要任何前言或自我介紹，直接從「### 1.」開始輸出，不加免責聲明。
+    prompt = `根據以下投資組合比較數據，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+格式：每章節用「### 章節標題」開頭，不要任何前言、自我介紹或免責聲明，直接開始第一章節。
 
 ${rows}
 
-### 1. 各組合優劣比較 (Portfolio Comparison)
-### 2. 最佳配置建議 (Recommended Configuration)
-### 3. 適合不同投資人的選擇 (For Different Investor Profiles)`;
+章節一：各組合優劣比較 (Portfolio Comparison)
+章節二：最佳配置建議 (Recommended Configuration)
+章節三：適合不同投資人的選擇 (For Different Investor Profiles)`;
   }
 
   if (!prompt) {
