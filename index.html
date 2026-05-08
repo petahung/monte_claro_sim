@@ -2781,7 +2781,14 @@ async function askAI(tabId) {
       btn.disabled = false; btn.textContent = '✦ AI 解說';
       return;
     }
-    const rows = Array.from(tbl.querySelectorAll('tr'))
+    // 只取關鍵指標行，避免 prompt 過長
+    const KEY_METRICS = ['配置','年數','策略','存活率','CAGR P10','CAGR 中位','CAGR P90','Sharpe 中位','MDD 中位','MDD P90','倍數 P10','倍數 中位','倍數 P90'];
+    const allRows = Array.from(tbl.querySelectorAll('tr'));
+    const rows = allRows
+      .filter(tr => {
+        const first = tr.querySelector('th,td')?.textContent.trim() ?? '';
+        return tr.querySelector('th') || KEY_METRICS.some(k => first.includes(k));
+      })
       .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td=>td.textContent.trim()).join(' | '))
       .join('\n');
 
@@ -2821,6 +2828,9 @@ ${rows}
       box.innerHTML = '<span style="color:#f87171">[錯誤] ' + renderMd(JSON.stringify(raw,null,2)) + '</span>';
     } else {
       box.innerHTML = renderMd(raw.text ?? JSON.stringify(raw,null,2));
+      if (raw.finishReason && raw.finishReason !== 'STOP') {
+        box.innerHTML += `<br><em style="color:#f59e0b;font-size:0.75rem">⚠ 停止原因: ${raw.finishReason}</em>`;
+      }
     }
     box.classList.add('show');
   } catch(e) {
