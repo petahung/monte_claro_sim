@@ -2439,16 +2439,19 @@ function drawCompBoxPlots(all) {
   const elRow = document.createElement('div');
   elRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px';
   elRow.innerHTML =
-    '<div class="chart-box" style="margin-bottom:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="chart-title" style="margin:0">報酬分佈對比（P5–P95）</span><select id="cmp-box-left-metric" style="font-size:0.75rem" onchange="redrawCompBoxLeft()"><option value="cagr">CAGR</option><option value="mwrr">MWRR</option></select></div><canvas id="cmp-box-cagr" height="260"></canvas></div>' +
+    '<div class="chart-box" style="margin-bottom:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="chart-title" style="margin:0">報酬分佈對比（P5–P95）</span><select id="cmp-box-left-metric" style="font-size:0.75rem" onchange="redrawCompBoxLeft()"><option value="cagr">CAGR</option><option value="mwrr" selected>MWRR</option></select></div><canvas id="cmp-box-cagr" height="260"></canvas></div>' +
     '<div class="chart-box" style="margin-bottom:0"><div class="chart-title" style="margin-bottom:8px">MDD 分佈對比（P5 / P25 / P50 / P75 / P95）</div><canvas id="cmp-box-mdd" height="260"></canvas></div>';
   document.getElementById('comp-results').appendChild(elRow);
 
   window._cmpBoxOpts = boxOpts;
   setTimeout(() => {
     if (CHARTS.cmpBoxCagr) CHARTS.cmpBoxCagr.destroy();
+    const initMetric = document.getElementById('cmp-box-left-metric')?.value ?? 'mwrr';
+    const initBoxData = initMetric === 'mwrr' ? mwrrBoxData : cagrBoxData;
+    const initLabel   = initMetric === 'mwrr' ? 'MWRR' : 'CAGR';
     CHARTS.cmpBoxCagr = new Chart(document.getElementById('cmp-box-cagr'), {
       type: 'boxplot',
-      data: { labels, datasets: cagrDatasets },
+      data: { labels, datasets: [{ ...cagrDatasets[0], label: initLabel, data: initBoxData }] },
       options: boxOpts('%', '%', null)
     });
 
