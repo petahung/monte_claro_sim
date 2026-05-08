@@ -2752,9 +2752,9 @@ async function askAI(tabId) {
 
 數據：期間 ${dates[0].slice(0,7)}～${dates[N-1].slice(0,7)}（${nYrs.toFixed(1)}年）｜CAGR ${cagr.toFixed(1)}%｜年化波動 ${volA.toFixed(1)}%｜無風險利率 ${rfLast.toFixed(1)}%｜M2年增率 ${m2Yoy}%｜Kelly ${kelly}×
 
-章節一：為何應該投資 NDX？(Why invest in NDX?)
-章節二：怎樣評估自己投資的時間跨度？(Consider the time span of your investment?) 須強調：不可使用「閒置資金」說法；正確順序是先保留緊急預備金（Emergency Fund），再扣除短期內預計支出的費用，剩餘部分才是可投入市場的資金，且投資期間不應動用這部分資金。
-章節三：怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?) 須說明：Kelly Criterion 具有高度時變性（不同時期數值差異極大），不能以單一數值作為固定槓桿依據；投資時間跨度會顯著影響可承受的槓桿水平，短期投資者應大幅降低槓桿；當前無風險利率（Risk-Free Rate）${rfLast.toFixed(1)}% 直接影響槓桿借貸成本，利率越高，槓桿的淨報酬優勢越低，應相應調低槓桿水平。`;
+章節一：為何應該投資 NDX？
+章節二：怎樣評估投資時間跨度？（資金分層順序：先留緊急預備金，再扣短期支出，剩餘才投入市場，投資期間不動用）
+章節三：怎樣評估合適的槓桿比例？（Kelly ${kelly}× 具時變性不可固定；時間跨度越短槓桿應越低；無風險利率 ${rfLast.toFixed(1)}% 直接推高借貸成本，利率越高槓桿優勢越低）`;
 
   } else if (tabId === 'res' && lastResult) {
     const { finalV, mddArr, volArr, sharpArr, survRate, years, p } = lastResult;
