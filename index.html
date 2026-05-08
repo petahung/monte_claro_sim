@@ -2747,14 +2747,14 @@ async function askAI(tabId) {
     const vk = slice.reduce((s,v)=>s+(v-mu)**2,0)/slice.length;
     const kelly = vk > 1e-12 ? Math.min(8, Math.max(-2, mu/vk)).toFixed(2) : 'N/A';
 
-    prompt = `根據以下 NDX 歷史數據，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+    prompt = `根據以下 NDX 歷史數據，用繁體中文撰寫三個章節，各約100字。
 格式：每章節用「### 章節標題」開頭，不要任何前言、自我介紹，最後加上免責聲明，直接開始第一章節。
 
 數據：期間 ${dates[0].slice(0,7)}～${dates[N-1].slice(0,7)}（${nYrs.toFixed(1)}年）｜CAGR ${cagr.toFixed(1)}%｜年化波動 ${volA.toFixed(1)}%｜無風險利率 ${rfLast.toFixed(1)}%｜M2年增率 ${m2Yoy}%｜Kelly ${kelly}×
 
 章節一：為何應該投資 NDX？(Why invest in NDX?)
-章節二：怎樣評估自己投資的時間跨度？(Consider the time span of your investment?)
-章節三：怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?)`;
+章節二：怎樣評估自己投資的時間跨度？(Consider the time span of your investment?) 須強調：不可使用「閒置資金」說法；正確順序是先保留緊急預備金（Emergency Fund），再扣除短期內預計支出的費用，剩餘部分才是可投入市場的資金，且投資期間不應動用這部分資金。
+章節三：怎樣評估合適的槓桿比例？(How to evaluate appropriate leverage?) 須說明：Kelly Criterion 具有高度時變性（不同時期數值差異極大），不能以單一數值作為固定槓桿依據；投資時間跨度會顯著影響可承受的槓桿水平，短期投資者應大幅降低槓桿；當前無風險利率（Risk-Free Rate）${rfLast.toFixed(1)}% 直接影響槓桿借貸成本，利率越高，槓桿的淨報酬優勢越低，應相應調低槓桿水平。`;
 
   } else if (tabId === 'res' && lastResult) {
     const { finalV, mddArr, volArr, sharpArr, survRate, years, p } = lastResult;
@@ -2763,7 +2763,7 @@ async function askAI(tabId) {
     const mulArr  = Float64Array.from(finalV, v => v/init);
     const volPct  = Float64Array.from(volArr, v => v*100);
 
-    prompt = `根據以下蒙地卡羅模擬結果，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+    prompt = `根據以下蒙地卡羅模擬結果，用繁體中文撰寫三個章節，各約100字。
 格式：每章節用「### 章節標題」開頭，不要任何前言、最後加上免責聲明，直接開始第一章節。
 
 配置：${allocLabel(p)}｜${years}年｜${p.numSims.toLocaleString()}次｜${rebalLabel(p)}｜初始資金 ${p.initVal.toLocaleString()}
@@ -2792,7 +2792,7 @@ async function askAI(tabId) {
       .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td=>td.textContent.trim()).join(' | '))
       .join('\n');
 
-    prompt = `根據以下投資組合比較數據，用繁體中文撰寫三個章節，各約100字，關鍵術語附英文。
+    prompt = `根據以下投資組合比較數據，用繁體中文撰寫三個章節，各約100字。
 格式：每章節用「### 章節標題」開頭，不要任何前言、自我介紹或免責聲明，直接開始第一章節。
 
 ${rows}
@@ -2827,9 +2827,7 @@ ${rows}
     if (!res.ok) {
       box.innerHTML = '<span style="color:#f87171">[錯誤] ' + renderMd(JSON.stringify(raw,null,2)) + '</span>';
     } else {
-      // Strip trailing disclaimer Gemini adds despite instructions
-      const trimDisclaimer = t => t.replace(/\n*(免責聲明|Disclaimer|請注意|風險警告|Risk Warning|以上資料|以上內容|注意[:：]).[\s\S]*/i, '').trimEnd();
-      box.innerHTML = renderMd(trimDisclaimer(raw.text ?? JSON.stringify(raw,null,2)));
+      box.innerHTML = renderMd(raw.text ?? JSON.stringify(raw,null,2));
     }
     box.classList.add('show');
   } catch(e) {
