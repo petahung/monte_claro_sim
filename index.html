@@ -2747,7 +2747,7 @@ async function askAI(tabId) {
     const vk = slice.reduce((s,v)=>s+(v-mu)**2,0)/slice.length;
     const kelly = vk > 1e-12 ? Math.min(8, Math.max(-2, mu/vk)).toFixed(2) : 'N/A';
 
-    prompt = `You are a professional investment educator. Based on the following Nasdaq-100 (NDX) historical data, provide educational explanations in Traditional Chinese (繁體中文) with English subtitles for key terms. Be engaging and accessible to general investors.
+    prompt = `以下是納斯達克100指數 (NDX) 的歷史統計數據。請用繁體中文提供客觀的數據解讀，關鍵術語附英文，語氣平易近人。不要宣稱自己是顧問或專業人士，以數據說話。
 
 【NDX Historical Statistics】
 - Data period: ${dates[0].slice(0,7)} to ${dates[N-1].slice(0,7)} (${nYrs.toFixed(1)} years)
@@ -2770,7 +2770,7 @@ Please answer the following three questions. Each ~120–150 words. Format as nu
     const mulArr  = Float64Array.from(finalV, v => v/init);
     const volPct  = Float64Array.from(volArr, v => v*100);
 
-    prompt = `You are a professional investment educator. Interpret the following Monte Carlo simulation results for a Nasdaq-100 portfolio in Traditional Chinese (繁體中文) with English subtitles for key terms.
+    prompt = `以下是納斯達克100投資組合的蒙地卡羅模擬結果。請用繁體中文提供客觀的數據解讀，關鍵術語附英文，不要宣稱自己是顧問或專業人士，以數據說話。
 
 【Simulation Parameters】
 - Portfolio: ${allocLabel(p)}
@@ -2803,7 +2803,7 @@ Please provide three sections, each ~120 words, with bold headings. Do NOT add d
       .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td=>td.textContent.trim()).join(' | '))
       .join('\n');
 
-    prompt = `You are a professional investment educator. Compare the following Monte Carlo simulation results in Traditional Chinese (繁體中文) with English subtitles for key terms.
+    prompt = `以下是多個納斯達克100投資組合的蒙地卡羅模擬比較數據。請用繁體中文提供客觀的數據比較分析，關鍵術語附英文，不要宣稱自己是顧問或專業人士，以數據說話。
 
 【Comparison Table】
 ${rows}
@@ -2831,7 +2831,10 @@ Please provide three sections, each ~120–150 words, with bold headings. Do NOT
     const raw = await res.json();
     const renderMd = t => t
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^#{3} (.+)$/gm,'<h4 style="color:#7dd3fc;margin:10px 0 3px;font-size:0.9rem">$1</h4>')
+      .replace(/^#{2} (.+)$/gm,'<h3 style="color:#93c5fd;margin:12px 0 4px;font-size:0.95rem">$1</h3>')
+      .replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid #1f2937;margin:8px 0">')
+      .replace(/\*\*(.+?)\*\*/g,'<strong style="color:#e2e8f0">$1</strong>')
       .replace(/\n/g,'<br>');
     if (!res.ok) {
       box.innerHTML = '<span style="color:#f87171">[錯誤] ' + renderMd(JSON.stringify(raw,null,2)) + '</span>';
