@@ -2760,6 +2760,7 @@ async function askAI(tabId) {
     const { finalV, mddArr, volArr, sharpArr, survRate, years, p } = lastResult;
     const init = p.initVal;
     const cagrArr = Float64Array.from(finalV, v => v>0 ? (Math.pow(v/init,1/years)-1)*100 : -100);
+    const mwrrArr = computeMWRR(finalV, p);
     const mulArr  = Float64Array.from(finalV, v => v/init);
     const volPct  = Float64Array.from(volArr, v => v*100);
 
@@ -2767,8 +2768,9 @@ async function askAI(tabId) {
 輸出格式：三個章節，每章節以「### 章節標題」開頭，結尾不加免責聲明。
 
 配置：${allocLabel(p)}｜${years}年｜${p.numSims.toLocaleString()}次｜${rebalLabel(p)}｜初始資金 ${p.initVal.toLocaleString()}
-存活率：${(survRate*100).toFixed(1)}%｜CAGR 中位 ${pct(cagrArr,50).toFixed(1)}%（P10 ${pct(cagrArr,10).toFixed(1)}% / P90 ${pct(cagrArr,90).toFixed(1)}%）｜波動率 ${pct(volPct,50).toFixed(1)}%｜Sharpe ${pct(sharpArr,50).toFixed(2)}｜MDD 中位 ${(-pct(mddArr,50)*100).toFixed(1)}%（P90 ${(-pct(mddArr,90)*100).toFixed(1)}%）｜期末倍數中位 ${pct(mulArr,50).toFixed(1)}×
+存活率：${(survRate*100).toFixed(1)}%｜MWRR 中位 ${pct(mwrrArr,50).toFixed(1)}%（P10 ${pct(mwrrArr,10).toFixed(1)}% / P90 ${pct(mwrrArr,90).toFixed(1)}%）｜CAGR 中位 ${pct(cagrArr,50).toFixed(1)}%（P10 ${pct(cagrArr,10).toFixed(1)}% / P90 ${pct(cagrArr,90).toFixed(1)}%）｜波動率 ${pct(volPct,50).toFixed(1)}%｜Sharpe ${pct(sharpArr,50).toFixed(2)}｜MDD 中位 ${(-pct(mddArr,50)*100).toFixed(1)}%（P90 ${(-pct(mddArr,90)*100).toFixed(1)}%）｜期末倍數中位 ${pct(mulArr,50).toFixed(1)}×
 
+重要：優先以 MWRR（考慮現金流時序的實際報酬率）作為核心評估指標，次要參考 CAGR。
 結果解讀 (Result Interpretation)（特別觀察債務變化、beta變化）
 主要風險 (Key Risks)
 建議與下一步 (Suggestions)`;
@@ -2782,7 +2784,7 @@ async function askAI(tabId) {
       return;
     }
     // 只取關鍵指標行，避免 prompt 過長
-    const KEY_METRICS = ['配置','年數','策略','存活率','CAGR P10','CAGR 中位','CAGR P90','Sharpe 中位','MDD 中位','MDD P90','倍數 P10','倍數 中位','倍數 P90'];
+    const KEY_METRICS = ['配置','年數','策略','存活率','MWRR P10','MWRR 中位','MWRR P90','CAGR P10','CAGR 中位','CAGR P90','Sharpe 中位','MDD 中位','MDD P90','倍數 P10','倍數 中位','倍數 P90'];
     const allRows = Array.from(tbl.querySelectorAll('tr'));
     const rows = allRows
       .filter(tr => {
@@ -2797,7 +2799,8 @@ async function askAI(tabId) {
 
 ${rows}
 
-各組合優劣比較 (Portfolio Comparison)（特別觀察beta變化，對於最終回報還有回報分散程度、MDD幅度探討）
+重要：優先以 MWRR（考慮現金流時序的實際報酬率）作為核心比較指標，次要參考 CAGR。
+各組合優劣比較 (Portfolio Comparison)（特別觀察MWRR差異、beta變化、回報分散程度、MDD幅度）
 最佳配置建議 (Recommended Configuration)
 適合不同投資人的選擇 (For Different Investor Profiles)`;
   }
