@@ -2827,10 +2827,9 @@ ${rows}
     if (!res.ok) {
       box.innerHTML = '<span style="color:#f87171">[錯誤] ' + renderMd(JSON.stringify(raw,null,2)) + '</span>';
     } else {
-      box.innerHTML = renderMd(raw.text ?? JSON.stringify(raw,null,2));
-      if (raw.finishReason && raw.finishReason !== 'STOP') {
-        box.innerHTML += `<br><em style="color:#f59e0b;font-size:0.75rem">⚠ 停止原因: ${raw.finishReason}</em>`;
-      }
+      // Strip trailing disclaimer Gemini adds despite instructions
+      const trimDisclaimer = t => t.replace(/\n*(免責聲明|Disclaimer|請注意|風險警告|Risk Warning|以上資料|以上內容|注意[:：]).[\s\S]*/i, '').trimEnd();
+      box.innerHTML = renderMd(trimDisclaimer(raw.text ?? JSON.stringify(raw,null,2)));
     }
     box.classList.add('show');
   } catch(e) {
