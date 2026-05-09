@@ -129,7 +129,7 @@ tr:hover td{background:#1a2540}
 @media(max-width:768px){
   .hamburger{display:block}
   .body{grid-template-columns:1fr}
-  .sidebar{position:fixed;left:-105%;top:48px;width:88%;max-width:300px;height:calc(100vh - 48px);z-index:200;transition:left .25s ease;box-shadow:6px 0 24px rgba(0,0,0,.6)}
+  .sidebar{position:fixed;left:-105%;top:48px;width:88%;max-width:300px;height:calc(100vh - 48px);height:calc(100dvh - 48px);z-index:200;transition:left .25s ease;box-shadow:6px 0 24px rgba(0,0,0,.6);overflow-y:auto;-webkit-overflow-scrolling:touch}
   .sidebar.mob-open{left:0}
   .sidebar-overlay.mob-open{display:block}
   .topbar h1{font-size:0.82rem}
