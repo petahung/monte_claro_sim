@@ -1916,7 +1916,7 @@ function drawFan(res) {
         histStartDate: startDate,
         histEndDate: endDate,
         data: Array.from(values, (v,t) => ({ x: t*K/252, y: v||null })),
-        borderColor: `rgba(251,191,36,${alpha.toFixed(2)})`,
+        borderColor: `rgba(34,211,238,${alpha.toFixed(2)})`,
         borderWidth: 1,
         pointRadius: 0,
         tension: 0.3,
@@ -1927,7 +1927,7 @@ function drawFan(res) {
     if (n > 0) datasets.push({  // legend proxy
       label: `歷史路徑 (${histPaths[0].label}–${histPaths[n-1].label})`,
       data: [],
-      borderColor: 'rgba(251,191,36,0.7)',
+      borderColor: 'rgba(34,211,238,0.7)',
       borderWidth: 1.5,
       pointRadius: 0,
       fill: false,
