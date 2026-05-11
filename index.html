@@ -1910,13 +1910,13 @@ function drawFan(res) {
     const histPaths = computeHistPaths(p, useGrossAsset, T, K);
     const n = histPaths.length;
     histPaths.forEach(({ label, startDate, endDate, values }, i) => {
-      const alpha = 0.15 + 0.45 * (i / Math.max(n-1, 1)); // older=faint, recent=brighter
+      const alpha = 0.12 + 0.35 * (i / Math.max(n-1, 1)); // older=faint, recent=brighter
       datasets.unshift({  // insert behind fan bands
         label: 'hist-' + label,
         histStartDate: startDate,
         histEndDate: endDate,
         data: Array.from(values, (v,t) => ({ x: t*K/252, y: v||null })),
-        borderColor: `rgba(34,211,238,${alpha.toFixed(2)})`,
+        borderColor: `rgba(203,213,225,${alpha.toFixed(2)})`,
         borderWidth: 1,
         pointRadius: 0,
         tension: 0.3,
@@ -1927,7 +1927,7 @@ function drawFan(res) {
     if (n > 0) datasets.push({  // legend proxy
       label: `歷史路徑 (${histPaths[0].label}–${histPaths[n-1].label})`,
       data: [],
-      borderColor: 'rgba(34,211,238,0.7)',
+      borderColor: 'rgba(203,213,225,0.5)',
       borderWidth: 1.5,
       pointRadius: 0,
       fill: false,
